@@ -51,6 +51,11 @@ sed -i "s#_('Firmware Version'),(L.isObject(boardinfo.release)?boardinfo.release
 sed -i -E 's/icons\/port_%s\.(svg|png)/icons\/port_%s.gif/g' "$PORTS_JS"
 mv "$PORTS_JS" "$NEW_PORTS_JS"
 
+# sett permission directory
+log_status "INFO" "sett permission directory..."
+chmod -R +x /sbin /usr/bin /etc/init.d
+chmod +x "$MM_REPORT"
+
 # check system release
 log_status "INFO" "Checking system release..."
 if grep -q "ImmortalWrt" /etc/openwrt_release; then
@@ -131,14 +136,14 @@ if grep -q "Raspberry Pi 4\|Raspberry Pi 3" /proc/cpuinfo; then
     uci set wireless.@wifi-device[0].channel='149'
     uci set wireless.@wifi-device[0].htmode='VHT80'
 else
+    log_status "INFO" "Generic device detected - configuring 2.4GHz WiFi..."
     uci set wireless.@wifi-iface[0].ssid='XIDZs-WRT'
     uci set wireless.@wifi-device[0].channel='1'
     uci set wireless.@wifi-device[0].htmode='HT20'
 fi
 
 uci commit wireless
-wifi reload > /dev/null
-wifi up > /dev/null
+wifi reload && wifi up > /dev/null
 
 # check wireless interface
 if iw dev | grep -q Interface; then
@@ -210,8 +215,6 @@ fi
 log_status "INFO" "Setting up misc configurations..."
 sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/usr\/bin\/xyyraa/' "$PROFILE"
 sed -i '11c\DatabaseDir "/etc/vnstat"' "$VNSTAT_CONF"
-chmod -R +x /sbin /usr/bin /etc/init.d
-chmod +x "$MM_REPORT"
 
 # run install2 script
 log_status "INFO" "Running install2 script..."
