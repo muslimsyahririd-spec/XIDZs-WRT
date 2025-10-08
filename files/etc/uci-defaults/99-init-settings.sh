@@ -340,6 +340,7 @@ log_status "INFO" "XIDZs-WRT Setup Script Finished"
 log_status "INFO" "Check log file: $LOG_FILE"
 log_status "INFO" "========================================="
 
+sync
 rm -rf /etc/uci-defaults/$(basename "$0")
 
 exit 0
