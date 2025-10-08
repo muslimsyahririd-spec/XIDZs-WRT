@@ -53,7 +53,9 @@
 	{% endif %}
 </head>
 <body class="lang_{{ dispatcher.lang }} {{ ctx.authsession ? 'logged-in' : '' }} {{ length(ctx.path) ? `node-${join('-', ctx.path)}` : 'node-main-login' }}" data-page="{{ entityencode(join('-', ctx.path), true) }}">
+	
 	<div class="main-right">
+		<!-- Header Section -->
 		<header class="bg-primary">
 			<div class="fill">
 				<div class="container">
@@ -76,11 +78,13 @@
 					<span class="status" id="indicators"></span>
 				</div>
 			</div>
+
+			<!-- Menu Styles -->
 			<style>
 				#menu {
 					position: relative;
 					top: -7px;
-					left: 90px;
+					left: 80px;
 					margin: 0;
 					padding: -3px 0;
 				}
@@ -103,6 +107,8 @@
 					text-decoration: underline;
 				}
 			</style>
+
+			<!-- Navigation Menu -->
 			<nav id='menu'>
 				<ul>
 					<li><a href='/cgi-bin/luci/admin/services/ttyd'>Terminal</a></li>
@@ -112,68 +118,98 @@
 					<li><a id='yacd' href='#' target='_blank'>Yacd</a></li>
 				</ul>
 			</nav>
+
+			<!-- Menu Script -->
 			<script>
-				(async function(){
-					const { hostname } = window.location;
-					const base = `http://${hostname}:9090`;
+				(function(){
+					'use strict';
 					
-					const zash = document.getElementById('zash');
-					const yacd = document.getElementById('yacd');
-					
-					if(!zash || !yacd) return;
-					
-					yacd.href = `${base}/ui/yacd/`;
-					
-					const check = url => fetch(url, { method: 'HEAD' }).then(r => r.ok).catch(() => false);
-					
-					const nikkiOk = await check(`${base}/ui/Nikki/`);
-					const zashOk = await check(`${base}/ui/zashboard/`);
-					
-					if(nikkiOk) {
-						zash.href = `${base}/ui/Nikki/?host=${hostname}&port=9090`;
-						zash.textContent = 'Nikki';
-						zash.style.color = '#0f0';
-					} else if(zashOk) {
-						zash.href = `${base}/ui/zashboard/`;
-						zash.textContent = 'Openclash';
-						zash.style.color = '#0f0';
-					} else {
-						zash.href = `${base}/ui/zashboard/`;
-						zash.textContent = 'Zash';
+					function init() {
+						const zash = document.getElementById('zash');
+						const yacd = document.getElementById('yacd');
+						
+						if (!zash || !yacd) return setTimeout(init, 100);
+						
+						const { hostname } = window.location;
+						const base = `http://${hostname}:9090`;
+						
+						yacd.href = `${base}/ui/yacd/`;
+						
+						function check(url) {
+							return new Promise((resolve, reject) => {
+								const img = new Image();
+								img.onload = () => resolve(url);
+								img.onerror = reject;
+								img.src = `${url}favicon.ico?${Date.now()}`;
+							});
+						}
+						
+						function set(url, color, text) {
+							zash.href = url;
+							zash.style.color = color;
+							zash.textContent = text;
+						}
+						
+						check(`${base}/ui/Nikki/`)
+							.then(url => set(`${url}?host=${hostname}&port=9090`, '#0f0', 'Nikki'))
+							.catch(() => check(`${base}/ui/zashboard/`)
+								.then(url => set(url, '#0f0', 'Clash'))
+								.catch(() => set(`${base}/ui/zashboard/`, '#fff', 'Zash')));
 					}
+					
+					document.readyState === 'loading' ? 
+						document.addEventListener('DOMContentLoaded', init) : init();
 				})();
 			</script>
 		</header>
+
+		<!-- Main Content Section -->
 		<div class="main">
-			<div style="" class="loading"><span><div class="loading-img"></div>{{ _('Collecting data...') }}</span></div>
+			<div style="" class="loading">
+				<span>
+					<div class="loading-img"></div>
+					{{ _('Collecting data...') }}
+				</span>
+			</div>
+
 			<div class="main-left" id="mainmenu" style="display:none"></div>
+
 			<div class="main-right">
 				<div class="modemenu-buttons" style="display:none">
 					<ul id="modemenu"></ul>
 				</div>
+
 				<div class="darkMask"></div>
+
 				<div id="maincontent">
 					<div class="container">
+						<!-- Alert: No Password Set -->
 						{% if (getuid() == 0 && getspnam('root')?.pwdp === '' && ctx.authsession): %}
 						<div class="alert-message warning">
 							<h4>{{ _('No password set!') }}</h4>
 							<p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
 							{% if (dispatcher.lookup("admin/system/admin")): %}
-							<div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+							<div class="right">
+								<a class="btn" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a>
+							</div>
 							{% endif %}
 						</div>
 						{% endif %}
 
+						<!-- Alert: Recovery Mode -->
 						{% if (boardinfo?.rootfs_type == "initramfs"): %}
 						<div class="alert-message warning">
 							<h4>{{ _('System running in recovery (initramfs) mode.') }}</h4>
 							<p>{{ _('No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade') }}</p>
 							{% if (dispatcher.lookup("admin/system/flash")): %}
-							<div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/flash") }}">{{ _('Go to firmware upgrade...') }}</a></div>
+							<div class="right">
+								<a class="btn" href="{{ dispatcher.build_url("admin/system/flash") }}">{{ _('Go to firmware upgrade...') }}</a>
+							</div>
 							{% endif %}
 						</div>
 						{% endif %}
 
+						<!-- Alert: JavaScript Required -->
 						<noscript>
 							<div class="alert-message warning">
 								<h4>{{ _('JavaScript required!') }}</h4>
