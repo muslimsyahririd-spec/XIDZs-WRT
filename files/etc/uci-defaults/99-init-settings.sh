@@ -29,6 +29,7 @@ NIKKIX_SH="/root/nikki-x.sh"
 PHP_INI="/etc/php.ini"
 PHP_INI_BAK="/etc/php.ini.bak"
 VNSTAT_CONF="/etc/vnstat.conf"
+PLUG_USB="/etc/hotplug.d/usb/23-wwan_modem"
 
 # logging dengan status
 log_status() {
@@ -55,6 +56,7 @@ mv "$PORTS_JS" "$NEW_PORTS_JS"
 log_status "INFO" "sett permission directory..."
 chmod -R +x /sbin /usr/bin /etc/init.d
 chmod +x "$MM_REPORT"
+chmod +x "$PLUG_USB"
 
 # check system release
 log_status "INFO" "Checking system release..."
