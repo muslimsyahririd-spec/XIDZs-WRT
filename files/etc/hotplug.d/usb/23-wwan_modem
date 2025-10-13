@@ -1,20 +1,31 @@
 #!/bin/sh
 #
-# Hotplug Script untuk konfigurasi module WWAN
-# @lionware <lionware@siltesa.com> - Oktober 2025
+# Hotplug Script for WWAN module configuration
+# @lionware <lionware@siltesa.com> - October 2025
 # credit mbah wisnu ( remod version by xidz_x )
 #
 
-# Cek ACTION
+# Check ACTION event type
 case "$ACTION" in
     add|change|remove) ;;
     *) exit 0 ;;
 esac
 
-# Ambil VID
-VID=$(echo $PRODUCT | cut -d'/' -f1)
+# Extract VID with validation
+if [ -z "$PRODUCT" ]; then
+    logger -t wwan_modem "PRODUCT variable not found, exiting"
+    exit 0
+fi
 
-# Cek VID yang didukung
+VID=$(echo "$PRODUCT" | cut -d'/' -f1)
+
+# Validate VID exists
+if [ -z "$VID" ]; then
+    logger -t wwan_modem "VID not found in PRODUCT: $PRODUCT"
+    exit 0
+fi
+
+# Check supported VID list
 case "$VID" in
     2cb7|1199|8087|413c|1bc7|2c7c|3f0|489|5c6|e8d)
         logger -t wwan_modem "VID:$VID detected - Supported device"
@@ -25,103 +36,147 @@ case "$VID" in
         ;;
 esac
 
-# Ambil interface (dengan error handling)
+# Get interface name with improved error handling
 get_iface() {
-    uci show network 2>/dev/null | grep "proto='$1'" | head -n1 | cut -d'.' -f2
-}
-
-mm_iface=$(get_iface "modemmanager")
-atc_iface=$(get_iface "atc")
-xmm_iface=$(get_iface "xmm")
-
-# Cek apakah interface ada
-interface_exists() {
-    uci -q get network."$1" >/dev/null 2>&1
-}
-
-# Set port serial
-set_port() {
-    uci set 3ginfo.@3ginfo[0].device="$1" 2>/dev/null
-    uci set atcommands.@atcommands[0].set_port="$1" 2>/dev/null
-    uci set modemband.@modemband[0].set_port="$1" 2>/dev/null
-    uci set modeminfo.@modeminfo[0].device="$1" 2>/dev/null
-    uci set sms_tool_js.@sms_tool_js[0].readport="$1" 2>/dev/null
-    uci set sms_tool_js.@sms_tool_js[0].sendport="$1" 2>/dev/null
-    uci set sms_tool_js.@sms_tool_js[0].ussdport="$1" 2>/dev/null
-    uci set sms_tool_js.@sms_tool_js[0].atport="$1" 2>/dev/null
-    uci -q commit 3ginfo
-    uci -q commit atcommands
-    uci -q commit modemband
-    uci -q commit modeminfo
-    uci -q commit sms_tool_js
-}
-
-# Detect OrangePi Zero3
-is_opiz3() {
-    if grep -q "OrangePi Zero3" /proc/device-tree/model 2>/dev/null; then
-        logger -t wwan_modem "OrangePi Zero3 detected"
-        return 0
-    else
-        logger -t wwan_modem "Not OrangePi Zero3"
-        return 1
-    fi
-}
-
-# Set LED OrangePi Zero3
-set_led() {
-    if is_opiz3; then
-        uci set system.@led[0].dev="$1" 2>/dev/null
-        uci -q commit system
-        service led restart >/dev/null 2>&1
-        logger -t wwan_modem "LED configured for interface: $1"
-    fi
-}
-
-toggle_mm() {
-    local file="/etc/hotplug.d/tty/25-modemmanager-tty"
-    [ ! -f "$file" ] && return
-    
-    if [ "$1" = "enable" ]; then
-        sed -i 's/^# \(mm_log "info" .*\)/\1/' "$file"
-        sed -i 's/^# \(mm_report_event .*\)/\1/' "$file"
-    else
-        sed -i 's/^\(mm_log "info" .*\)/# \1/' "$file"
-        sed -i 's/^\(mm_report_event .*\)/# \1/' "$file"
-    fi
-}
-
-set_proto() {
     local proto="$1"
-    local iface="$2"
+    local result=""
     
-    if [ "$proto" = "atc" ] && [ -n "$atc_iface" ]; then
-        interface_exists "$atc_iface" && uci set network."$atc_iface".disabled="0"
-        if [ -n "$xmm_iface" ] && interface_exists "$xmm_iface"; then
-            uci set network."$xmm_iface".disabled="1"
-            ifdown "$xmm_iface" 2>/dev/null
-        fi
-    elif [ "$proto" = "mm" ] && [ -n "$mm_iface" ]; then
-        interface_exists "$mm_iface" && uci set network."$mm_iface".disabled="0"
-        if [ -n "$xmm_iface" ] && interface_exists "$xmm_iface"; then
-            uci set network."$xmm_iface".disabled="1"
-            ifdown "$xmm_iface" 2>/dev/null
-        fi
-    elif [ "$proto" = "xmm" ] && [ -n "$xmm_iface" ]; then
-        interface_exists "$xmm_iface" && uci set network."$xmm_iface".disabled="0"
-        if [ -n "$mm_iface" ] && interface_exists "$mm_iface"; then
-            uci set network."$mm_iface".disabled="1"
-            ifdown "$mm_iface" 2>/dev/null
-        fi
+    if [ -n "$proto" ]; then
+        result=$(uci show network 2>/dev/null | grep "proto='$proto'" | head -n1 | cut -d'.' -f2 2>/dev/null)
     fi
     
-    uci -q commit network
+    echo "$result"
+}
+
+# Check if interface exists and is valid
+interface_exists() {
+    local iface="$1"
+    [ -n "$iface" ] && uci -q get "network.$iface" >/dev/null 2>&1
+}
+
+# Check if UCI section exists
+uci_section_exists() {
+    local config="$1"
+    local section="$2"
+    uci -q get "$config.$section" >/dev/null 2>&1
+}
+
+# Set serial port with validation
+set_port() {
+    local port="$1"
     
-    if [ -n "$iface" ] && interface_exists "$iface"; then
-        if [ "$proto" = "atc" ]; then
-            ifdown "$iface" 2>/dev/null
-            sleep 1
+    [ -z "$port" ] && return 1
+    
+    # Set port for various configs if section exists
+    uci_section_exists "3ginfo" "@3ginfo[0]" && {
+        uci set "3ginfo.@3ginfo[0].device=$port" 2>/dev/null
+        uci -q commit 3ginfo
+    }
+    
+    uci_section_exists "atcommands" "@atcommands[0]" && {
+        uci set "atcommands.@atcommands[0].set_port=$port" 2>/dev/null
+        uci -q commit atcommands
+    }
+    
+    uci_section_exists "modemband" "@modemband[0]" && {
+        uci set "modemband.@modemband[0].set_port=$port" 2>/dev/null
+        uci -q commit modemband
+    }
+    
+    uci_section_exists "modeminfo" "@modeminfo[0]" && {
+        uci set "modeminfo.@modeminfo[0].device=$port" 2>/dev/null
+        uci -q commit modeminfo
+    }
+    
+    uci_section_exists "sms_tool_js" "@sms_tool_js[0]" && {
+        uci set "sms_tool_js.@sms_tool_js[0].readport=$port" 2>/dev/null
+        uci set "sms_tool_js.@sms_tool_js[0].sendport=$port" 2>/dev/null  
+        uci set "sms_tool_js.@sms_tool_js[0].ussdport=$port" 2>/dev/null
+        uci set "sms_tool_js.@sms_tool_js[0].atport=$port" 2>/dev/null
+        uci -q commit sms_tool_js
+    }
+    
+    logger -t wwan_modem "Serial port set to: $port"
+}
+
+# Detect OrangePi Zero3 hardware
+is_opiz3() {
+    [ -f "/proc/device-tree/model" ] && grep -q "OrangePi Zero3" /proc/device-tree/model 2>/dev/null
+}
+
+# Configure LED for OrangePi Zero3  
+set_led() {
+    local led_dev="$1"
+    
+    [ -z "$led_dev" ] && return 1
+    
+    if is_opiz3; then
+        if uci_section_exists "system" "@led[0]"; then
+            uci set "system.@led[0].dev=$led_dev" 2>/dev/null
+            uci -q commit system
+            /etc/init.d/led restart >/dev/null 2>&1
+            logger -t wwan_modem "LED configured for interface: $led_dev"
         fi
-        ifup "$iface" 2>/dev/null
+    fi
+}
+
+# Enable/Disable ModemManager hotplug
+toggle_mm() {
+    local action="$1"
+    local file="/etc/hotplug.d/tty/25-modemmanager-tty"
+    
+    [ ! -f "$file" ] && return 1
+    
+    case "$action" in
+        "enable")
+            sed -i 's/^# \(mm_log "info" .*\)/\1/' "$file" 2>/dev/null
+            sed -i 's/^# \(mm_report_event .*\)/\1/' "$file" 2>/dev/null
+            ;;
+        "disable")
+            sed -i 's/^\(mm_log "info" .*\)/# \1/' "$file" 2>/dev/null
+            sed -i 's/^\(mm_report_event .*\)/# \1/' "$file" 2>/dev/null
+            ;;
+    esac
+    
+    logger -t wwan_modem "ModemManager hotplug: $action"
+}
+
+# Set protocol and manage interfaces
+set_proto() {
+    local target_proto="$1"
+    local target_iface="$2"
+    
+    [ -z "$target_proto" ] && return 1
+    
+    # Get all available interfaces
+    local mm_iface atc_iface xmm_iface
+    mm_iface=$(get_iface "modemmanager")
+    atc_iface=$(get_iface "atc") 
+    xmm_iface=$(get_iface "xmm")
+    
+    # Disable all interfaces first
+    for iface in "$mm_iface" "$atc_iface" "$xmm_iface"; do
+        if [ -n "$iface" ] && interface_exists "$iface"; then
+            uci set "network.$iface.disabled=1" 2>/dev/null
+            ifdown "$iface" >/dev/null 2>&1
+        fi
+    done
+    
+    # Enable target interface
+    if [ -n "$target_iface" ] && interface_exists "$target_iface"; then
+        uci set "network.$target_iface.disabled=0" 2>/dev/null
+        uci -q commit network
+        
+        # For ATC, wait a moment before bringing up interface
+        if [ "$target_proto" = "atc" ]; then
+            sleep 2
+        fi
+        
+        ifup "$target_iface" >/dev/null 2>&1
+        logger -t wwan_modem "Interface $target_iface activated with protocol: $target_proto"
+    else
+        uci -q commit network
+        logger -t wwan_modem "No valid interface found for protocol: $target_proto"
     fi
 }
 
@@ -142,86 +197,217 @@ get_device_name() {
     esac
 }
 
-# Konfigurasi berdasarkan VID
-case "$VID" in
-    1199) # EM7430/EM7455
-        set_port "/dev/ttyUSB1"
-        set_led "wwan0"
-        toggle_mm enable
-        set_proto "mm" "$mm_iface"
+# Detect user-configured protocol (for L850/L860)
+detect_user_protocol() {
+    local atc_iface xmm_iface mm_iface
+    
+    atc_iface=$(get_iface "atc")
+    xmm_iface=$(get_iface "xmm") 
+    mm_iface=$(get_iface "modemmanager")
+    
+    # Priority: ATC > XMM > MM
+    if [ -n "$atc_iface" ] && interface_exists "$atc_iface"; then
+        echo "atc:$atc_iface"
+    elif [ -n "$xmm_iface" ] && interface_exists "$xmm_iface"; then
+        echo "xmm:$xmm_iface"
+    elif [ -n "$mm_iface" ] && interface_exists "$mm_iface"; then
+        echo "mm:$mm_iface"
+    else
+        echo "none:"
+    fi
+}
+
+# Configure modem based on VID
+configure_modem() {
+    local vid="$1"
+    
+    case "$vid" in
+        1199) # EM7430/EM7455 - Sierra Wireless
+            set_port "/dev/ttyUSB1"
+            set_led "wwan0"
+            toggle_mm "enable"
+            
+            local mm_iface
+            mm_iface=$(get_iface "modemmanager")
+            set_proto "mm" "$mm_iface"
+            ;;
+            
+        2c7c|3f0) # Quectel RM5XX, HP LT4220
+            set_port "/dev/ttyUSB2"
+            set_led "wwan0"
+            toggle_mm "enable"
+            
+            local mm_iface
+            mm_iface=$(get_iface "modemmanager")
+            set_proto "mm" "$mm_iface"
+            ;;
+            
+        2cb7) # Fibocom L850-GL - Auto detect protocol
+            set_port "/dev/ttyACM0"
+            
+            local proto_info proto_name proto_iface
+            proto_info=$(detect_user_protocol)
+            proto_name=$(echo "$proto_info" | cut -d':' -f1)
+            proto_iface=$(echo "$proto_info" | cut -d':' -f2)
+            
+            case "$proto_name" in
+                "atc")
+                    set_led "wwan0"
+                    toggle_mm "disable"
+                    set_proto "atc" "$proto_iface"
+                    logger -t wwan_modem "L850-GL: Using ATC protocol (user configured)"
+                    ;;
+                "xmm")
+                    set_led "eth1"
+                    toggle_mm "enable"
+                    set_proto "xmm" "$proto_iface"
+                    logger -t wwan_modem "L850-GL: Using XMM protocol (user configured)"
+                    ;;
+                *)
+                    # Default to ModemManager
+                    set_led "wwan0"
+                    toggle_mm "enable"
+                    local mm_iface
+                    mm_iface=$(get_iface "modemmanager")
+                    set_proto "mm" "$mm_iface"
+                    logger -t wwan_modem "L850-GL: Using ModemManager protocol (default)"
+                    ;;
+            esac
+            ;;
+            
+        8087) # Intel L860-GL - Auto detect protocol
+            set_port "/dev/ttyACM0"
+            
+            local proto_info proto_name proto_iface
+            proto_info=$(detect_user_protocol)
+            proto_name=$(echo "$proto_info" | cut -d':' -f1)
+            proto_iface=$(echo "$proto_info" | cut -d':' -f2)
+            
+            case "$proto_name" in
+                "atc")
+                    set_led "wwan0"
+                    toggle_mm "disable"
+                    set_proto "atc" "$proto_iface"
+                    logger -t wwan_modem "L860-GL: Using ATC protocol (user configured)"
+                    ;;
+                "mm")
+                    set_led "wwan0"
+                    toggle_mm "enable"
+                    set_proto "mm" "$proto_iface"
+                    logger -t wwan_modem "L860-GL: Using ModemManager protocol (user configured)"
+                    ;;
+                *)
+                    # Default to XMM
+                    set_led "eth1"
+                    toggle_mm "enable"
+                    local xmm_iface
+                    xmm_iface=$(get_iface "xmm")
+                    set_proto "xmm" "$xmm_iface"
+                    logger -t wwan_modem "L860-GL: Using XMM protocol (default)"
+                    ;;
+            esac
+            ;;
+            
+        413c|1bc7|489) # Dell DW5821e, Telit LN940, Generic
+            set_port "/dev/ttyUSB0"
+            set_led "wwan0"
+            toggle_mm "enable"
+            
+            local mm_iface
+            mm_iface=$(get_iface "modemmanager")
+            set_proto "mm" "$mm_iface"
+            ;;
+            
+        5c6) # Qualcomm T99W175
+            set_port "/dev/ttyUSB3"
+            set_led "wwan0"
+            toggle_mm "disable"
+            
+            local mm_iface
+            mm_iface=$(get_iface "modemmanager")
+            set_proto "mm" "$mm_iface"
+            ;;
+            
+        e8d) # Fibocom FM350-GL
+            set_port "/dev/ttyUSB4"
+            set_led "eth1"
+            toggle_mm "disable"
+            
+            local atc_iface
+            atc_iface=$(get_iface "atc")
+            set_proto "atc" "$atc_iface"
+            ;;
+    esac
+}
+
+# Main execution logic
+STATUS_FILE="/tmp/wwan_modem.status"
+
+case "$ACTION" in
+    "add"|"change")
+        # Check if device is not already configured
+        if [ ! -f "$STATUS_FILE" ]; then
+            # Validate DEVPATH environment variable
+            if [ -z "$DEVPATH" ]; then
+                logger -t wwan_modem "DEVPATH not found, skipping device path configuration"
+            fi
+            
+            device_path="/sys${DEVPATH}"
+            device_name=$(get_device_name "$VID")
+            
+            logger -t wwan_modem "$device_name detected (VID:$VID)"
+            
+            # Configure the modem
+            configure_modem "$VID"
+            
+            # Set device path for active interface (if DEVPATH exists)
+            if [ -n "$DEVPATH" ]; then
+                local mm_iface atc_iface xmm_iface
+                mm_iface=$(get_iface "modemmanager")
+                atc_iface=$(get_iface "atc")
+                xmm_iface=$(get_iface "xmm")
+                
+                for iface in "$mm_iface" "$atc_iface" "$xmm_iface"; do
+                    if [ -n "$iface" ] && interface_exists "$iface"; then
+                        local disabled
+                        disabled=$(uci -q get "network.$iface.disabled" 2>/dev/null)
+                        if [ "$disabled" != "1" ]; then
+                            uci set "network.$iface.device=$device_path" 2>/dev/null
+                            uci -q commit network
+                            logger -t wwan_modem "Device path set for interface: $iface"
+                            break
+                        fi
+                    fi
+                done
+            fi
+            
+            # Save device status
+            echo "$VID|$device_name|$(date '+%H:%M:%S')" > "$STATUS_FILE"
+            logger -t wwan_modem "$device_name configuration completed"
+            
+        else
+            logger -t wwan_modem "Device already configured, skipping"
+        fi
         ;;
-    2c7c|3f0) # RM5XX, LT4220
-        set_port "/dev/ttyUSB2"
-        set_led "wwan0"
-        toggle_mm enable
-        set_proto "mm" "$mm_iface"
-        ;;
-    2cb7) # L850
-        set_port "/dev/ttyACM0"
-        set_led "wwan0"
-        toggle_mm enable
-        set_proto "mm" "$mm_iface"
-        ;;
-    8087) # L860
-        set_port "/dev/ttyACM0"
-        set_led "eth1"
-        toggle_mm enable
-        set_proto "xmm" "$xmm_iface"
-        ;;
-    413c|1bc7|489) # DW5821e, LN940
-        set_port "/dev/ttyUSB0"
-        set_led "wwan0"
-        toggle_mm enable
-        set_proto "mm" "$mm_iface"
-        ;;
-    5c6) # T99W175
-        set_port "/dev/ttyUSB3"
-        set_led "wwan0"
-        toggle_mm disable
-        set_proto "mm" "$mm_iface"
-        ;;
-    e8d) # FM350-GL
-        set_port "/dev/ttyUSB4"
-        set_led "eth1"
-        toggle_mm disable
-        set_proto "atc" "$atc_iface"
+        
+    "remove")
+        # Clean up when device is removed
+        if [ -f "$STATUS_FILE" ]; then
+            local old_device
+            old_device=$(cut -d'|' -f2 "$STATUS_FILE" 2>/dev/null)
+            logger -t wwan_modem "$old_device removed"
+            
+            # Reset LED configuration for OrangePi Zero3
+            if is_opiz3 && uci_section_exists "system" "@led[0]"; then
+                uci set "system.@led[0].dev=" 2>/dev/null
+                uci -q commit system
+                /etc/init.d/led restart >/dev/null 2>&1
+                logger -t wwan_modem "LED configuration reset"
+            fi
+            
+            rm -f "$STATUS_FILE"
+        fi
         ;;
 esac
 
-# Main logic
-STATUS_FILE="/tmp/wwan_modem.status"
-
-if [ ! -f "$STATUS_FILE" ] && [ "$ACTION" != "remove" ]; then
-    device_path="/sys${DEVPATH}"
-    
-    if [ -n "$device_path" ]; then
-        logger -t wwan_modem "$(get_device_name $VID) detected (VID:$VID)"
-        
-        # Set device path hanya jika mm_iface ada
-        if [ -n "$mm_iface" ] && interface_exists "$mm_iface"; then
-            uci set network."$mm_iface".device="$device_path"
-            uci -q commit network
-        fi
-        
-        echo "$VID|$(get_device_name $VID)|$(date '+%H:%M:%S')" > "$STATUS_FILE"
-        logger -t wwan_modem "$(get_device_name $VID) configured"
-    fi
-    
-elif [ -f "$STATUS_FILE" ] && [ "$ACTION" != "remove" ]; then
-    logger -t wwan_modem "Device already configured, skip"
-fi
-
-# Cleanup
-if [ -f "$STATUS_FILE" ] && [ "$ACTION" = "remove" ]; then
-    old_device=$(cut -d'|' -f2 "$STATUS_FILE" 2>/dev/null)
-    logger -t wwan_modem "$old_device removed"
-    
-    if is_opiz3; then
-        logger -t wwan_modem "Resetting LED (OPiZ3)"
-        uci set system.@led[0].dev="" 2>/dev/null
-        uci -q commit system
-        service led restart >/dev/null 2>&1
-    fi
-    
-    rm -f "$STATUS_FILE"
-fi
+exit 0
