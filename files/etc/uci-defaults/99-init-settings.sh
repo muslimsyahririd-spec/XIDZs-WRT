@@ -32,7 +32,7 @@ VNSTAT_CONF="/etc/vnstat.conf"
 PLUG_USB="/etc/hotplug.d/usb/23-wwan_modem"
 HAT_WIFI="/etc/hotplug.d/usb/99-wifi-hat"
 ARGON_CONF="/usr/share/ucode/luci/template/themes/argon/header.ut"
-RTA_CONF="/usr/share/ucode/luci/template/themes/rta/header.ut"
+RTA_CONF="/usr/lib/lua/luci/view/themes/rtawrt/header.htm"
 
 # logging dengan status
 log_status() {
@@ -220,7 +220,7 @@ fi
 # setup misc settings
 log_status "INFO" "Setting up misc configurations..."
 sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/usr\/bin\/xyyraa/' "$PROFILE"
-sed -i '11c\DatabaseDir "/etc/vnstat"' "$VNSTAT_CONF"
+/etc/init.d/issue enable > /dev/null
 
 # run install2 script
 log_status "INFO" "Running install2 script..."
@@ -236,10 +236,6 @@ chmod +x "$RULES_SH"
 log_status "INFO" "Running TTL script..."
 chmod +x "$INDOWRT_SH"
 "$INDOWRT_SH"
-
-# setup enable services
-log_status "INFO" "Enabling services..."
-/etc/init.d/issue enable > /dev/null
 
 # checking and setup tunnel
 log_status "INFO" "Checking tunnel applications..."
