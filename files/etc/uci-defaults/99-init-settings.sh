@@ -51,7 +51,7 @@ log_status "INFO" "========================================="
 
 # modify firmware display
 log_status "INFO" "Modifying firmware display..."
-sed -i "s#_('Firmware Version'),(L.isObject(boardinfo.release)?boardinfo.release.description+' / ':'')+(luciversion||''),#_('Firmware Version'),(L.isObject(boardinfo.release)?boardinfo.release.description+' By xidz_x | fidz':''),#g" "$SYSTEM_JS"
+sed -i "s#_('Firmware Version'),(L.isObject(boardinfo.release)?boardinfo.release.description+' / ':'')+(luciversion||''),#_('Firmware Version'),(L.isObject(boardinfo.release)?boardinfo.release.description+' By fidz':''),#g" "$SYSTEM_JS"
 sed -i -E 's/icons\/port_%s\.(svg|png)/icons\/port_%s.gif/g' "$PORTS_JS"
 mv "$PORTS_JS" "$NEW_PORTS_JS"
 
@@ -271,6 +271,9 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
                 find /etc/openclash/rule_provider -type f ! -name '*.yaml' -exec rm -f {} \;
                 
                 mv /etc/config/openclash1 /etc/config/openclash
+                
+                sed -i '103,105s/.*/<\!-- & -->/' "$RTA_CONF"
+                sed -i '144s/.*/<\!-- & -->/' "$ARGON_CONF"
                 ;;
                 
             luci-app-nikki)
@@ -290,12 +293,16 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
                 
                 log_status "INFO" "Creating symlinks from OpenClash to Nikki..."
                 ln -sf /etc/openclash/proxy_provider /etc/nikki/run
-                ln -sf /etc/openclash/rule_provider /etc/nikki/run 
+                ln -sf /etc/openclash/rule_provider /etc/nikki/run
+                
+                sed -i '115,117s/.*/<\!-- & -->/' "$RTA_CONF"
+                sed -i '146s/.*/<\!-- & -->/' "$ARGON_CONF"
                 ;;
                 
             luci-app-passwall)
                 log_status "INFO" "Configuring Passwall..."
-                
+                sed -i '112,114s/.*/<\!-- & -->/' "$RTA_CONF"
+                sed -i '147s/.*/<\!-- & -->/' "$ARGON_CONF"
                 ;;
         esac
         
@@ -306,14 +313,23 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
             luci-app-openclash)
                 rm -f /etc/config/openclash1
                 rm -rf /etc/openclash
+                
+                sed -i '118,120s/.*/<\!-- & -->/' "$RTA_CONF"
+                sed -i '149s/.*/<\!-- & -->/' "$ARGON_CONF"
                 ;;
                 
             luci-app-nikki)
                 rm -rf /etc/config/nikki /etc/nikki
+                
+                sed -i '121,123s/.*/<\!-- & -->/' "$RTA_CONF"
+                sed -i '150s/.*/<\!-- & -->/' "$ARGON_CONF"
                 ;;
                 
             luci-app-passwall)
                 rm -f /etc/config/passwall
+                
+                sed -i '124,126s/.*/<\!-- & -->/' "$RTA_CONF"
+                sed -i '151s/.*/<\!-- & -->/' "$ARGON_CONF"
                 ;;
         esac
     fi
