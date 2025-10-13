@@ -116,6 +116,9 @@ uci delete network.wan6
 uci commit network
 
 log_status "INFO" "Configuring firewall..."
+uci set firewall.@defaults[0].input='ACCEPT'
+uci set firewall.@defaults[0].output='ACCEPT'
+uci set firewall.@defaults[0].forward='ACCEPT'
 uci set firewall.@zone[1].network='tethering modem mm'
 uci commit firewall
 
