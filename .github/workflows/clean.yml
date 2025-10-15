@@ -1,4 +1,4 @@
-name: Clean
+name: Clean All Artifacts
 
 on:
   workflow_dispatch:
@@ -13,6 +13,7 @@ on:
         - 'artifacts'
         - 'releases_tags'
         - 'old_workflows'
+        - 'workflow_caches'
         - 'all_clean'
 
 jobs:
@@ -106,6 +107,64 @@ jobs:
             }
             
             console.log(`\nTotal artifacts deleted: ${totalDeleted}`);
+
+      - name: Delete all workflow caches
+        if: ${{ inputs.clean_option == 'workflow_caches' || inputs.clean_option == 'all_clean' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            console.log("Fetching all workflow caches...");
+            
+            let totalDeleted = 0;
+            let page = 1;
+            let hasMore = true;
+            
+            while (hasMore) {
+              try {
+                const response = await github.rest.actions.getActionsCacheList({
+                  owner,
+                  repo,
+                  per_page: 100,
+                  page: page
+                });
+                
+                const caches = response.data.actions_caches;
+                
+                if (caches.length === 0) {
+                  hasMore = false;
+                  break;
+                }
+                
+                console.log(`Found ${caches.length} caches on page ${page}`);
+                
+                // Delete each cache
+                for (const cache of caches) {
+                  console.log(`Deleting cache: ${cache.key} (ID: ${cache.id}, Size: ${(cache.size_in_bytes / 1024).toFixed(2)} KB)`);
+                  
+                  try {
+                    await github.rest.actions.deleteActionsCacheById({
+                      owner,
+                      repo,
+                      cache_id: cache.id
+                    });
+                    console.log(`Deleted cache: ${cache.key}`);
+                    totalDeleted++;
+                  } catch (error) {
+                    console.error(`Failed to delete cache ${cache.key}: ${error.message}`);
+                  }
+                }
+                
+                page++;
+              } catch (error) {
+                console.error(`Error fetching caches: ${error.message}`);
+                hasMore = false;
+              }
+            }
+            
+            console.log(`\nTotal workflow caches deleted: ${totalDeleted}`);
 
       - name: Delete all releases and tags
         if: ${{ inputs.clean_option == 'releases_tags' || inputs.clean_option == 'all_clean' }}
