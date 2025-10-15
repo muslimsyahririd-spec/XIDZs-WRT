@@ -25,7 +25,6 @@ INDOWRT_SH="/root/indowrt.sh"
 OCPATCH_SH="/root/ocpatch.sh"
 CLASH_META="/etc/openclash/core/clash_meta"
 COUNTRY_MMDB="/etc/openclash/Country.mmdb"
-NIKKIX_SH="/root/nikki-x.sh"
 PHP_INI="/etc/php.ini"
 PHP_INI_BAK="/etc/php.ini.bak"
 VNSTAT_CONF="/etc/vnstat.conf"
@@ -116,9 +115,6 @@ uci delete network.wan6
 uci commit network
 
 log_status "INFO" "Configuring firewall..."
-uci set firewall.@defaults[0].input='ACCEPT'
-uci set firewall.@defaults[0].output='ACCEPT'
-uci set firewall.@defaults[0].forward='ACCEPT'
 uci set firewall.@zone[1].network='tethering modem mm'
 uci commit firewall
 
@@ -279,17 +275,7 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
             luci-app-nikki)
                 log_status "INFO" "Configuring Nikki..."
                 
-                rm -rf /etc/nikki/run/providers
                 chmod +x /etc/nikki/run/Geo*
-                
-                log_status "INFO" "Adding config editor for Nikki..."
-                if [ -f "$NIKKIX_SH" ]; then
-                    chmod +x "$NIKKIX_SH"
-                    "$NIKKIX_SH"
-                    log_status "INFO" "Nikki config editor applied successfully"
-                else
-                    log_status "WARNING" "nikki-x.sh not found, skipping config editor"
-                fi
                 
                 log_status "INFO" "Creating symlinks from OpenClash to Nikki..."
                 ln -sf /etc/openclash/proxy_provider /etc/nikki/run
@@ -319,7 +305,7 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
                 ;;
                 
             luci-app-nikki)
-                rm -rf /etc/config/nikki /etc/nikki
+                rm -rf /etc/nikki
                 
                 sed -i '121,123s/.*/<\!-- & -->/' "$RTA_CONF"
                 sed -i '150s/.*/<\!-- & -->/' "$ARGON_CONF"
