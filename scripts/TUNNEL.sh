@@ -23,7 +23,7 @@ passwall_core_file_zip_down=$(curl -s "https://api.github.com/repos/xiaorouji/op
 
 # Nikki URL generation
 nikki_file_ipk="nikki_${ARCH_3}-openwrt-${VEROP}"
-nikki_file_ipk_down=$(curl -s "https://api.github.com/repos/nikkinikki-org/OpenWrt-nikki/releases" | grep "browser_download_url" | grep -oE "https.*${nikki_file_ipk}.*.tar.gz" | head -n 1)
+nikki_file_ipk_down=$(curl -s "https://api.github.com/repos/de-quenx/nikki-x/releases" | grep "browser_download_url" | grep -oE "https.*${nikki_file_ipk}.*.tar.gz" | head -n 1)
 
 # Function to download and setup OpenClash
 setup_openclash() {
