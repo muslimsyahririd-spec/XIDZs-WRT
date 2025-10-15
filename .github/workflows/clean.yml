@@ -1,0 +1,93 @@
+name: Clean All
+
+on:
+  workflow_dispatch:
+
+jobs:
+  delete-all-artifacts:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clean logs, cache, and tmp directories
+        run: |
+          echo "Cleaning logs, cache, and tmp directories..."
+          
+          # Find and delete log files
+          echo "Deleting log files..."
+          find . -type f \( -name "*.log" -o -name "*.log.*" \) -print -delete || true
+          
+          # Find and delete cache directories
+          echo "Deleting cache directories..."
+          find . -type d \( -name "cache" -o -name ".cache" -o -name "__pycache__" -o -name ".pytest_cache" -o -name "node_modules/.cache" \) -print -exec rm -rf {} + 2>/dev/null || true
+          
+          # Find and delete tmp/temp directories
+          echo "Deleting tmp/temp directories..."
+          find . -type d \( -name "tmp" -o -name "temp" -o -name ".tmp" -o -name ".temp" \) -print -exec rm -rf {} + 2>/dev/null || true
+          
+          # Delete common build artifacts
+          echo "Deleting build artifacts..."
+          find . -type d \( -name "dist" -o -name "build" -o -name ".next" -o -name ".nuxt" \) -print -exec rm -rf {} + 2>/dev/null || true
+          
+          echo "Cleanup completed!"
+          
+          # Show disk usage
+          echo ""
+          echo "Current directory size:"
+          du -sh . 2>/dev/null || true
+
+      - name: Delete all artifacts from all workflow runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // Ambil semua artifacts
+            let page = 1;
+            let hasMore = true;
+            let totalDeleted = 0;
+            
+            while (hasMore) {
+              const response = await github.rest.actions.listArtifactsForRepo({
+                owner,
+                repo,
+                per_page: 100,
+                page: page
+              });
+              
+              const artifacts = response.data.artifacts;
+              
+              if (artifacts.length === 0) {
+                hasMore = false;
+                break;
+              }
+              
+              // Hapus setiap artifact
+              for (const artifact of artifacts) {
+                console.log(`Deleting artifact: ${artifact.name} (ID: ${artifact.id})`);
+                
+                try {
+                  await github.rest.actions.deleteArtifact({
+                    owner,
+                    repo,
+                    artifact_id: artifact.id
+                  });
+                  console.log(`Deleted: ${artifact.name}`);
+                  totalDeleted++;
+                } catch (error) {
+                  console.error(`Failed to delete ${artifact.name}: ${error.message}`);
+                }
+              }
+              
+              page++;
+            }
+            
+            console.log(`\nTotal artifacts deleted: ${totalDeleted}`);
