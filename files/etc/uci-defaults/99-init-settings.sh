@@ -262,10 +262,7 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
                 ln -sf /etc/openclash/history/quenx.db /etc/openclash/cache.db
                 ln -sf /etc/openclash/core/clash_meta /etc/openclash/clash
                 
-                rm -f /etc/config/openclash
-                rm -rf /etc/openclash/custom /etc/openclash/game_rules
-                find /etc/openclash/rule_provider -type f ! -name '*.yaml' -exec rm -f {} \;
-                
+                rm -f /etc/config/openclash    
                 mv /etc/config/openclash1 /etc/config/openclash
                 
                 sed -i '103,105s/.*/<\!-- & -->/' "$RTA_CONF"
