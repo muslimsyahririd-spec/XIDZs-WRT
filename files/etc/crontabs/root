@@ -9,5 +9,7 @@
 #30 3 * * * ifdown fibocom && sleep 3 && ifup fibocom
 # RAM cleanup every 6h
 0 */6 * * * /sbin/free.sh >/dev/null 2>&1
+# restart netdata & vnstat every 12h
+0 */12 * * * /sbin/netvn.sh >/dev/null 2>&1
 # Network stats every 5m
 */5 * * * * /www/netmonitor/vnstati/vnstati.sh >/dev/null 2>&1
