@@ -28,7 +28,7 @@ COUNTRY_MMDB="/etc/openclash/Country.mmdb"
 PHP_INI="/etc/php.ini"
 PHP_INI_BAK="/etc/php.ini.bak"
 VNSTAT_CONF="/etc/vnstat.conf"
-PLUG_USB="/etc/hotplug.d/usb/23-wwan_modem"
+PLUG_USB="/etc/hotplug.d/usb/23-wwan-modem"
 HAT_WIFI="/etc/hotplug.d/usb/99-wifi-hat"
 ARGON_CONF="/usr/share/ucode/luci/template/themes/argon/header.ut"
 RTA_CONF="/usr/lib/lua/luci/view/themes/rtawrt/header.htm"
@@ -219,6 +219,7 @@ fi
 # setup misc settings
 log_status "INFO" "Setting up misc configurations..."
 sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/usr\/bin\/xyyraa/' "$PROFILE"
+rm -rf /etc/hotplug.d/usb/25-modemmanager-usb
 /etc/init.d/issue enable > /dev/null
 
 # run install2 script
@@ -272,6 +273,7 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
             luci-app-nikki)
                 log_status "INFO" "Configuring Nikki..."                
                 chmod +x /etc/nikki/run/Geo*
+                rm -rf /etc/nikki/run/providers
                 
                 log_status "INFO" "Creating symlinks from OpenClash to Nikki..."
                 ln -sf /etc/openclash/proxy_provider /etc/nikki/run
