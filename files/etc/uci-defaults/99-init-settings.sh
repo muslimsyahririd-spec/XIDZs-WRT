@@ -273,7 +273,8 @@ for pkg in luci-app-openclash luci-app-nikki luci-app-passwall; do
             luci-app-nikki)
                 log_status "INFO" "Configuring Nikki..."                
                 chmod +x /etc/nikki/run/Geo*
-                rm -rf /etc/nikki/run/providers
+                rm -rf /etc/nikki/run/proxy_provider
+                rm -rf /etc/nikki/run/rule_provider
                 
                 log_status "INFO" "Creating symlinks from OpenClash to Nikki..."
                 ln -sf /etc/openclash/proxy_provider /etc/nikki/run
