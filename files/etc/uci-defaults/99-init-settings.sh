@@ -118,13 +118,6 @@ log_status "INFO" "Configuring firewall..."
 uci set firewall.@zone[1].network='tethering modem mm'
 uci commit firewall
 
-# disable ipv6 lan
-log_status "INFO" "Disabling IPv6 on LAN..."
-uci delete dhcp.lan.dhcpv6
-uci delete dhcp.lan.ra
-uci delete dhcp.lan.ndp
-uci commit dhcp
-
 # configure wireless device
 log_status "INFO" "Configuring wireless..."
 uci set wireless.@wifi-device[0].disabled='0'
@@ -211,6 +204,7 @@ if opkg list-installed | grep -q luci-app-amlogic; then
     rm -f "$SYSINFO_SH"
     sed -i '/exit 0/i #sleep 5 && /usr/bin/k5hgled -r' "$RC_LOCAL"
     sed -i '/exit 0/i #sleep 5 && /usr/bin/k6hgled -r' "$RC_LOCAL"
+    sed
 else
     log_status "INFO" "luci-app-amlogic not detected"
     rm -f /usr/bin/k5hgled /usr/bin/k6hgled /usr/bin/k5hgledon /usr/bin/k6hgledon
