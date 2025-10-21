@@ -204,7 +204,6 @@ if opkg list-installed | grep -q luci-app-amlogic; then
     rm -f "$SYSINFO_SH"
     sed -i '/exit 0/i #sleep 5 && /usr/bin/k5hgled -r' "$RC_LOCAL"
     sed -i '/exit 0/i #sleep 5 && /usr/bin/k6hgled -r' "$RC_LOCAL"
-    sed
 else
     log_status "INFO" "luci-app-amlogic not detected"
     rm -f /usr/bin/k5hgled /usr/bin/k6hgled /usr/bin/k5hgledon /usr/bin/k6hgledon
