@@ -63,7 +63,7 @@
 <small>
 <a href="https://de-quenx.github.io/XIDZsWRT">Download XIDZsWRT Firmware</a><br>
 <a href="https://github.com/de-quenx/XIDZs-WRT/blob/main/LICENSE">LICENSE</a><br>
-<a href="https://github.com/rizkikotet-dev/RTA-WRT">RTA-WrtBuilder By RizkiKotet-Dev</a><br>
+<a href="https://github.com/rizkikotet-dev/RTA-WRT">RTA-WrtBuilder By RizkiKotet-Dev & pembuat script builder</a><br>
 <a href="https://github.com/frizkyiman/friWrt-MyWrtBuilder">friWrt-MyWrtBuilder By frizkyiman</a><br>
 <a href="https://github.com/Revincx/MyWrtBuilder">MyWrtBuilder By Revincx</a><br>
 <a href="https://github.com/armarchindo/ULO-Builder/blob/main/ulo">ULO Builder By DBAI</a><br>
