@@ -20,7 +20,7 @@
 - **Tema Material** - Interface simple dan Smooth
 - **Tema Alpha** - Interface modern dan clean
 - **Tema Argon** - Theme elegant dengan design responsive
-- **Tema RTA-wrt** - Theme simple and moden
+- **Tema RTA-wrt** - Theme simple and modern
 
 ### Network & Connectivity
 - **3ginfo-Lite | Modeminfo** - Monitor informasi modem secara detail
